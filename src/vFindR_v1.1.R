@@ -9,6 +9,8 @@ vFindR <- function(sample.dir = NULL,
                    bt2.e = NULL,
                    samtools.e = NULL,
                    java.e = NULL,
+                   path.to.extract.py = NULL,
+                   python.e = NULL,
                    ref.species = "homo_sapiens",
                    threads = 8,
                    output.dir = "vFindR_output",
@@ -42,6 +44,13 @@ vFindR <- function(sample.dir = NULL,
   if (is.null(path.to.picard.jar)) {
     path.to.picard.jar <- system("which picard.jar", intern = T)
   }
+  if (is.null(python.e)){
+    python.e <- system("which python3", intern = T)
+  }
+  if (is.null(path.to.extract.py)) {
+    path.to.extract.py <- "~/bin/extract_reads.py"
+  }
+  
   if (is.null(R1) & is.null(R2)) {
     R1 <- normalizePath(list.files(sample.dir, "R1.*fastq.gz", full.names = T))
     R2 <- normalizePath(list.files(sample.dir, "R2.*fastq.gz", full.names = T))
@@ -54,22 +63,30 @@ vFindR <- function(sample.dir = NULL,
   output.stub <- paste0(output.dir, "/", output.name)
   
   # set up all the files
-  aln.hg.1.out <- paste0(output.stub, "_", ref.species, ".bam")
+  aln.hg.1.bam <- paste0(output.stub, "_", ref.species, ".bam")
   aln.hg.1.sam.header <- paste0(output.stub, "_samheader.txt")
-  # get first/second/unaligned pairs
+  # files for first/second/unaligned pairs
   unmapped.first.bam <- paste0(output.stub, "_", ref.species, ".umapped.first.bam")
   unmapped.second.bam <- paste0(output.stub, "_", ref.species, ".umapped.second.bam")
   unmapped.both.bam <- paste0(output.stub, "_", ref.species, ".umapped.both.bam")
-  # convert to fastq for realignment
+  # files for convert to fastq for realignment
   unmapped.first.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.first_R1.fastq.gz")
   unmapped.first.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.first_R2.fastq.gz")
   unmapped.second.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.second_R1.fastq.gz")
   unmapped.second.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.second_R2.fastq.gz")
   unmapped.both.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.both_R1.fastq.gz")
   unmapped.both.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.both_R2.fastq.gz")
+  # files for align to viral genome
   aln.vir.first.bam <- paste0(output.stub, "_unmapped-first-", ref.species, "_virus.bam")
   aln.vir.second.bam <- paste0(output.stub, "_unmapped-second-", ref.species, "_virus.bam")
   aln.vir.both.bam <- paste0(output.stub, "_unmapped-both-", ref.species, "_virus.bam")
+  # aln.vir.first.mapped.readnames <- paste0(output.stub, "_", ref.species, "_first-remapped-to-virus_readnames.txt")
+  # aln.vir.second.mapped.readnames <- paste0(output.stub, "_", ref.species, "_second-remapped-to-virus_readnames.txt")
+  # realn.mapped.first.bam <- paste0(output.stub, "_", ref.species, "_first-remapped-to-virus_", ref.species, ".bam")
+  # realn.mapped.second.bam <- paste0(output.stub, "_", ref.species, "_second-remapped-to-virus_", ref.species, ".bam")  
+  dual.mapped.readnames <- paste0(output.stub, "_", ref.species, "_dual-mapped_readnames.txt")
+  dual.mapped.bam <- paste0(output.stub, "_", ref.species, "_dual-mapped.bam")
+  
   
   # wirite all the commands
   cmds <- vector()
@@ -78,22 +95,22 @@ vFindR <- function(sample.dir = NULL,
   cmds['aln.hg.1'] <- paste(bt2.e, "-p", threads, 
                             "-x", ref.genome.idx, 
                             "-1", R1, 
-                            "-2", R2, " | samtools sort -O BAM -@", threads, ">", aln.hg.1.out)
+                            "-2", R2, " | samtools sort -O BAM -@", threads, ">", aln.hg.1.bam)
   
   cmds['get.unmapped.first'] <- paste0("{ ", 
-                                       paste(samtools.e, "view -H ", aln.hg.1.out), " && ",
-                                       paste(samtools.e, "view -f 69 -G 9", aln.hg.1.out), " && ",
-                                       paste(samtools.e, "view -f 137 -G 5", aln.hg.1.out), 
+                                       paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
+                                       paste(samtools.e, "view -f 69 -G 9", aln.hg.1.bam), " && ",
+                                       paste(samtools.e, "view -f 137 -G 5", aln.hg.1.bam), 
                                        "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.first.bam)
   cmds['get.unmapped.second'] <- paste0("{ ", 
-                                        paste(samtools.e, "view -H ", aln.hg.1.out), " && ",
-                                        paste(samtools.e, "view -f 133 -G 9", aln.hg.1.out), " && ",
-                                        paste(samtools.e, "view -f 73 -G 5", aln.hg.1.out), 
+                                        paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
+                                        paste(samtools.e, "view -f 133 -G 9", aln.hg.1.bam), " && ",
+                                        paste(samtools.e, "view -f 73 -G 5", aln.hg.1.bam), 
                                         "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.second.bam)
   cmds['get.unmapped.both'] <- paste0("{ ", 
-                                      paste(samtools.e, "view -H ", aln.hg.1.out), " && ",
-                                      paste(samtools.e, "view -f 77", aln.hg.1.out), " && ",
-                                      paste(samtools.e, "view -f 141", aln.hg.1.out), 
+                                      paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
+                                      paste(samtools.e, "view -f 77", aln.hg.1.bam), " && ",
+                                      paste(samtools.e, "view -f 141", aln.hg.1.bam), 
                                       "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.both.bam)
   
   # # convert bam to fastq and realign to viral genome
@@ -109,7 +126,7 @@ vFindR <- function(sample.dir = NULL,
     paste0(java.e, " -jar ", path.to.picard.jar, " SamToFastq I=", unmapped.both.bam, 
            " F=", unmapped.both.hg.r1.fastq, 
            " F2=", unmapped.both.hg.r2.fastq)
-  
+  # align to viral genome
   cmds['aln.vir.first'] <- paste(bt2.e, "--very-sensitive",
                                  "-p", threads, 
                                  "-x", vir.genome.idx, 
@@ -128,6 +145,19 @@ vFindR <- function(sample.dir = NULL,
                                 "-1", unmapped.both.hg.r1.fastq, 
                                 "-2", unmapped.both.hg.r2.fastq, 
                                 " | samtools sort -O BAM -@", threads, ">", aln.vir.both.bam)
+  
+  # # extract reads that mapped discordantly in human and did map to virus
+  # cmds['get.first.aln.virus'] <- paste(samtools.e, "view -F 4", aln.vir.first.bam, "| cut -f 1 > ", aln.vir.first.mapped.readnames)
+  # cmds['get.second.aln.virus'] <- paste(samtools.e, "view -F 4", aln.vir.second.bam, "| cut -f 1 > ", aln.vir.second.mapped.readnames)
+  cmds['index.first.bam'] <- paste(samtools.e, "index", aln.hg.1.bam)
+  cmds['get.dual.mapped.readnames'] <- paste0("{ ", 
+                                              paste(samtools.e, "view -F 4", aln.vir.first.bam), " && ",
+                                              paste(samtools.e, "view -F 4", aln.vir.second.bam),
+                                              "; } | cut -f 1 > ", dual.mapped.readnames)
+  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
+                                             "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
+
+  # index everything
   cmds['index'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " index $i; done")
   cmds['idxstats'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " idxstats $i > $i.idxstats; done")
   cmds <- .addEcho(cmds)
