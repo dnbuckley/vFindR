@@ -54,10 +54,10 @@ df.chr <- do.call(rbind, mapply(function(f, s) {
   data.frame(seqnames = unique(as.character(f@id)),
              organism = s)
 }, fastas, df$species,  SIMPLIFY = F))
-df.chr
 
 write.table(df.chr, "../../../vFindeR/viral_seqnames.txt",
             sep = "\t", row.names = F, col.names = T, quote = F)
+openxlsx::write.xlsx(df.chr, "../../../vFindR/viral_seqnames.xlsx")
 
 fa <- fastas[[1]]
 for (i in 2:length(fastas)) {

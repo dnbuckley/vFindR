@@ -187,6 +187,7 @@ vFindR <- function(sample.dir = NULL,
     c[n+3] <- cmds[i]
     n <- n+4
   }
+  c <- c(c, "echo Done.")
   return(c)
 }
 
