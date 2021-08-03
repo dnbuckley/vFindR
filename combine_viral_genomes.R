@@ -55,7 +55,7 @@ df.chr <- do.call(rbind, mapply(function(f, s) {
              organism = s)
 }, fastas, df$species,  SIMPLIFY = F))
 
-write.table(df.chr, "../../../vFindeR/viral_seqnames.txt",
+write.table(df.chr, "../../../vFindR/viral_seqnames.txt",
             sep = "\t", row.names = F, col.names = T, quote = F)
 openxlsx::write.xlsx(df.chr, "../../../vFindR/viral_seqnames.xlsx")
 

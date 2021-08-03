@@ -29,7 +29,7 @@ dualMappedSpecific <- function(path.to.vFindR.outdir,
   reads.mapped.specific <- c(names(first.bam)[as.logical(seqnames(first.bam) %in% refseq.virus)],
                              names(second.bam)[as.logical(seqnames(second.bam) %in% refseq.virus)])
   if (length(reads.mapped.specific) == 0) {
-    warning("No reads found.")
+    message("No reads found for ", paste0(refseq.virus, collapse = ", "))
     return("Done.")
   }
   dual.bam.specific <- dual.bam[as.logical(names(dual.bam) %in% reads.mapped.specific)]
@@ -49,7 +49,7 @@ dualMappedSpecific <- function(path.to.vFindR.outdir,
     depth$end <- depth$start
     depth <- GenomicRanges::GRanges(depth)
     rtracklayer::export.bedGraph(depth, depth.bg)
-    system(paste0("rm -v ", depth.txt))
+    system(paste0("rm ", depth.txt))
   }
   return("Done.")
 }

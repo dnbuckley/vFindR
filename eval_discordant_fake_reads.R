@@ -5,13 +5,14 @@ library(reshape2)
 library(caret)
 source("~/misc_R_scripts/samFlagTranslation.R")
 
-bam.files <- list.files("test_output/", "bam$", full.names = T)
-bai.files <- list.files("test_output/", "bai$", full.names = T)
+bam.files <- list.files("fake_data/vFindR_output/", "bam$", full.names = T)
+bai.files <- list.files("fake_data/vFindR_output/", "bai$", full.names = T)
 param <- ScanBamParam(what = c("qname", "rname", "pos", "qwidth"))
 bams <- mapply(scanBam, bam.files, bai.files, SIMPLIFY = T)
 names(bams) <- gsub(".*\\/", "", bam.files)
 x <- bams[[1]]
 # bams <- bams[-grep("test_human.bam", names(bams))]
+
 r1.swapped <- read.table("fake_data/R1_swapped.txt", col.names = "read.name")
 r2.swapped <- read.table("fake_data/R2_swapped.txt", col.names = "read.name")
 r1.swapped$read.name <- gsub("\\/.*", "", r1.swapped$read.name)
