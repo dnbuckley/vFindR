@@ -65,7 +65,7 @@ vFindR <- function(sample.dir = NULL,
     output.name <- "vFindR"
   }
   output.stub <- paste0(output.dir, "/", output.name)
-  output.stub.perVirus <- paste0(output.dir, "/", output.name, "perVirus")
+  output.stub.perVirus <- paste0(output.dir, "/", output.name, "perVirus/")
   
   # set up all the files
   aln.hg.1.bam <- paste0(output.stub, "_", ref.species, ".bam")
@@ -167,8 +167,8 @@ vFindR <- function(sample.dir = NULL,
   cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
   
   # index everything
-  cmds['index'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " index $i; done")
-  cmds['idxstats'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " idxstats $i > $i.idxstats; done")
+  # cmds['index'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " index $i; done")
+  # cmds['idxstats'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " idxstats $i > $i.idxstats; done")
   cmds <- .addEcho(cmds)
   if (mode == "local") {
       lapply(cmds, system, ignore.stdout = F, ignore.stderr = F)
