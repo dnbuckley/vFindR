@@ -97,7 +97,7 @@ vFindR <- function(sample.dir = NULL,
   # wirite all the commands
   cmds <- vector()
   cmds['make.output.dir'] <- paste0("mkdir ", output.dir)
-  cmds['make.output.dir.perVirus'] <- paste0("mkdir ", output.dir, "/", perVirus)
+  cmds['make.output.dir.perVirus'] <- paste0("mkdir ", output.dir, "/", "perVirus")
   cmds['change.dir'] <- paste0("cd ", output.dir)
   cmds['aln.hg.1'] <- paste(bt2.e, "-p", threads, 
                             "-x", ref.genome.idx, 
