@@ -7,7 +7,9 @@ cd $DIR
 BAMS=`ls -d *bam`
 
 for (( i=0; i<${#BAMS[@]}; i++ )); do
-	CMD="$BAMTOOLS convert -f bed -in ${BAMS[$i]}"
+	BAM=${BAMS[$i]}
+	BED=`echo $BAM | sed 's/bam$/bed/g'`
+	CMD="$BAMTOOLS convert -f bed -in $BAM -out $BED"
 	echo $CMD
 	$CMD
 done
