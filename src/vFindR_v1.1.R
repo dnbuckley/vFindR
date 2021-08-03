@@ -8,6 +8,7 @@ vFindR <- function(sample.dir = NULL,
                    output.name = NULL,
                    bt2.e = NULL,
                    samtools.e = NULL,
+                   bamtools.e = NULL,
                    java.e = NULL,
                    path.to.extract.py = NULL,
                    python.e = NULL,
@@ -38,6 +39,9 @@ vFindR <- function(sample.dir = NULL,
   if (is.null(samtools.e)) {
     samtools.e <- system("which samtools", intern = T)
   }
+  if (is.null(bamtools.e)) {
+    bamtools.e <- system("which bamtools", intern = T)
+  }
   if (is.null(java.e)) {
     java.e <- system("which java", intern = T)
   } 
@@ -61,14 +65,15 @@ vFindR <- function(sample.dir = NULL,
     output.name <- "vFindR"
   }
   output.stub <- paste0(output.dir, "/", output.name)
+  output.stub.perVirus <- paste0(output.dir, "/", output.name, "perVirus")
   
   # set up all the files
   aln.hg.1.bam <- paste0(output.stub, "_", ref.species, ".bam")
   aln.hg.1.sam.header <- paste0(output.stub, "_samheader.txt")
   # files for first/second/unaligned pairs
-  unmapped.first.bam <- paste0(output.stub, "_", ref.species, ".umapped.first.bam")
-  unmapped.second.bam <- paste0(output.stub, "_", ref.species, ".umapped.second.bam")
-  unmapped.both.bam <- paste0(output.stub, "_", ref.species, ".umapped.both.bam")
+  unmapped.first.bam <- paste0(output.stub, "_", ref.species, ".unmapped.first.bam")
+  unmapped.second.bam <- paste0(output.stub, "_", ref.species, ".unmapped.second.bam")
+  unmapped.both.bam <- paste0(output.stub, "_", ref.species, ".unmapped.both.bam")
   # files for convert to fastq for realignment
   unmapped.first.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.first_R1.fastq.gz")
   unmapped.first.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.first_R2.fastq.gz")
@@ -86,11 +91,13 @@ vFindR <- function(sample.dir = NULL,
   # realn.mapped.second.bam <- paste0(output.stub, "_", ref.species, "_second-remapped-to-virus_", ref.species, ".bam")  
   dual.mapped.readnames <- paste0(output.stub, "_", ref.species, "_dual-mapped_readnames.txt")
   dual.mapped.bam <- paste0(output.stub, "_", ref.species, "_dual-mapped.bam")
-  
+  aln.vir.first.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-first-", ref.species, "_virus")
+  aln.vir.second.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-second-", ref.species, "_virus")
   
   # wirite all the commands
   cmds <- vector()
   cmds['make.output.dir'] <- paste0("mkdir ", output.dir)
+  cmds['make.output.dir.perVirus'] <- paste0("mkdir ", output.dir, "/", perVirus)
   cmds['change.dir'] <- paste0("cd ", output.dir)
   cmds['aln.hg.1'] <- paste(bt2.e, "-p", threads, 
                             "-x", ref.genome.idx, 
@@ -147,8 +154,6 @@ vFindR <- function(sample.dir = NULL,
                                 " | samtools sort -O BAM -@", threads, ">", aln.vir.both.bam)
   
   # # extract reads that mapped discordantly in human and did map to virus
-  # cmds['get.first.aln.virus'] <- paste(samtools.e, "view -F 4", aln.vir.first.bam, "| cut -f 1 > ", aln.vir.first.mapped.readnames)
-  # cmds['get.second.aln.virus'] <- paste(samtools.e, "view -F 4", aln.vir.second.bam, "| cut -f 1 > ", aln.vir.second.mapped.readnames)
   cmds['index.first.bam'] <- paste(samtools.e, "index", aln.hg.1.bam)
   cmds['get.dual.mapped.readnames'] <- paste0("{ ", 
                                               paste(samtools.e, "view -F 4", aln.vir.first.bam), " && ",
@@ -156,7 +161,11 @@ vFindR <- function(sample.dir = NULL,
                                               "; } | cut -f 1 > ", dual.mapped.readnames)
   cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
                                              "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
-
+  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
+                                             "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
+  cmds['split.perVirus.first'] <- paste(bamtools.e, "split -reference -stub", aln.vir.first.perVirus.stub, "-in", aln.vir.first.bam)
+  cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
+  
   # index everything
   cmds['index'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " index $i; done")
   cmds['idxstats'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " idxstats $i > $i.idxstats; done")
