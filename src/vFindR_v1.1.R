@@ -16,6 +16,7 @@ vFindR <- function(sample.dir = NULL,
                    threads = 8,
                    output.dir = "vFindR_output",
                    mode = "sh",
+                   vFindR.dir = NULL,
                    slurm.header.args = c("-t 7-00:00:00", 
                                          "-p dtg", 
                                          "-A davidwcr_263", 
@@ -94,6 +95,8 @@ vFindR <- function(sample.dir = NULL,
   aln.vir.first.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-first-", ref.species, "_virus")
   aln.vir.second.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-second-", ref.species, "_virus")
   
+  
+  
   # wirite all the commands
   cmds <- vector()
   cmds['make.output.dir'] <- paste0("mkdir ", output.dir)
@@ -161,10 +164,15 @@ vFindR <- function(sample.dir = NULL,
                                               "; } | cut -f 1 > ", dual.mapped.readnames)
   cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
                                              "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
-  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
-                                             "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
+  # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
+  #                                            "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
   cmds['split.perVirus.first'] <- paste(bamtools.e, "split -reference -stub", aln.vir.first.perVirus.stub, "-in", aln.vir.first.bam)
   cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
+  cmds['remove_unmapped_bams'] <- paste0("rm -v ", aln.vir.second.perVirus.stub, "*_unmapped.bam")
+  cmds['dual_bam_to_bed'] <- paste(bamtools.e, "convert -f bed -in", dual.mapped.bam, "-out", gsub("bam$", "bed", dual.mapped.bam))
+  cmds['viral_bams_to_bed'] <- paste0(vFindR.dir, "/src/", "convert_all_virus_bams.sh ", 
+                                      paste0(output.dir, "/", "perVirus/"), " ", bamtools.e)
+  
   
   # index everything
   # cmds['index'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " index $i; done")
