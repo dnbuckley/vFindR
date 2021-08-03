@@ -65,7 +65,7 @@ vFindR <- function(sample.dir = NULL,
     output.name <- "vFindR"
   }
   output.stub <- paste0(output.dir, "/", output.name)
-  output.stub.perVirus <- paste0(output.dir, "/", output.name, "perVirus/")
+  output.stub.perVirus <- paste0(output.dir, "/", "perVirus/")
   
   # set up all the files
   aln.hg.1.bam <- paste0(output.stub, "_", ref.species, ".bam")
