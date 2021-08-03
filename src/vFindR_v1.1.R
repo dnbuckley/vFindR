@@ -170,7 +170,7 @@ vFindR <- function(sample.dir = NULL,
   cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
   cmds['remove_unmapped_bams'] <- paste0("rm -v ", aln.vir.second.perVirus.stub, "*_unmapped.bam")
   cmds['dual_bam_to_bed'] <- paste(bamtools.e, "convert -f bed -in", dual.mapped.bam, "-out", gsub("bam$", "bed", dual.mapped.bam))
-  cmds['viral_bams_to_bed'] <- paste0(vFindR.dir, "/src/", "convert_all_virus_bams.sh ", 
+  cmds['viral_bams_to_bed'] <- paste0("bash ", vFindR.dir, "/src/", "convert_all_virus_bams.sh ", 
                                       paste0(output.dir, "/", "perVirus/"), " ", bamtools.e)
   
   
