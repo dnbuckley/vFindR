@@ -1,8 +1,7 @@
 # main function
 
 vFindR <- function(sample.dir = NULL,
-                   ref.genome.idx, vir.genome.idx, 
-                   ref_vir.genome.idx = NULL,
+                   ref.genome.idx, vir.genome.idx, ref_vir.genome.idx,
                    path.to.picard.jar = NULL,
                    R1 = NULL,
                    R2 = NULL,
@@ -96,9 +95,16 @@ vFindR <- function(sample.dir = NULL,
   aln.vir.first.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-first-", ref.species, "_virus")
   aln.vir.second.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-second-", ref.species, "_virus")
   
-  potential.chimeric.reads.bam <- paste0(output.stub, "_potential_chimeric.bam")
-  potential.chimeric.reads.r1.fastq <- paste0(output.stub, "_potential_chimeric_R1.fastq.gz")
-  potential.chimeric.reads.r2.fastq <- paste0(output.stub, "_potential_chimeric_R2.fastq.gz")
+  # potential.chimeric.reads.header <- paste0(output.stub, "_potential_chimeric.samHeader")
+  # potential.chimeric.reads.sam <- paste0(output.stub, "_potential_chimeric.sam")
+  # potential.chimeric.reads.bam <- paste0(output.stub, "_potential_chimeric.bam")
+  potential.chimeric.reads.first.fastq <- paste0(output.stub, "_potential_chimeric_first.fastq.gz")
+  potential.chimeric.reads.second.fastq <- paste0(output.stub, "_potential_chimeric_second.fastq.gz")
+  potential.chimeric.reads.both.fastq <- paste0(output.stub, "_potential_chimeric_both.fastq.gz")
+  local.first.bam <- paste0(output.stub, "_first_localalign.bam")
+  local.second.bam <- paste0(output.stub, "_second_localalign.bam")
+  local.both.bam <- paste0(output.stub, "_both_localalign.bam")
+  
   
   
   
@@ -180,16 +186,45 @@ vFindR <- function(sample.dir = NULL,
                                       paste0(output.dir, "/", "perVirus/"), " ", bamtools.e)
   
   # take everything that remains unmapped; potential chimeric reads
-  cmds['get.unmapped.reads'] <- paste0("{ ",
-                                       paste("samtools view -h -f 4", aln.vir.first.bam), " && ",
-                                       paste("samtools view -f 4", aln.vir.second.bam), " && ",
-                                       paste("samtools view -f 4", aln.vir.first.bam), 
-                                       "; } | ", samtools.e, " view -b -@ ", threads, " > ", potential.chimeric.reads.bam)
-  cmds['picard.samtofastq.potential.chimeric'] <-
-    paste0(java.e, " -jar ", path.to.picard.jar, " SamToFastq I=", potential.chimeric.reads.bam, 
-           " F=", potential.chimeric.reads.r1.fastq, 
-           " F2=", potential.chimeric.reads.r2.fastq)
+  # get unmapped R1 reads | remove bowtie information | awk trick picard | sam2fastq
+  cmds['picard.samtofastq.potential.chimeric.first'] <-
+    paste0("samtools view -f 68 ", aln.vir.first.bam, " | cut -f 1-11 | ",
+           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; print}' | ",
+           java.e, " -jar ", path.to.picard.jar, " SamToFastq I=/dev/stdin", 
+           " F=", potential.chimeric.reads.first.fastq,
+           " INCLUDE_NON_PF_READS=true")
+  cmds['picard.samtofastq.potential.chimeric.second'] <-
+    paste0("samtools view -f 133 ", aln.vir.second.bam, " | cut -f 1-11 | ",
+           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; print}' | ",
+           java.e, " -jar ", path.to.picard.jar, " SamToFastq I=/dev/stdin", 
+           " F=", potential.chimeric.reads.second.fastq,
+           " INCLUDE_NON_PF_READS=true")
+  cmds['picard.samtofastq.potential.chimeric.both'] <-
+    paste0("samtools view -f 5 ", aln.vir.both.bam, " | cut -f 1-11 | ",
+           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; $3=$7=\"*\"; $4=$5=$8=0; print}' | ",
+           java.e, " -jar ", path.to.picard.jar, " SamToFastq I=/dev/stdin", 
+           " F=", potential.chimeric.reads.both.fastq,
+           " INCLUDE_NON_PF_READS=true")
   
+  # run local alignment on combined human/viral genome
+  cmds['aln.ref_vir.1'] <- paste(bt2.e, "-p", threads, 
+                                 "-x", ref_vir.genome.idx, 
+                                 "-U", potential.chimeric.reads.first.fastq,
+                                 "--very-sensitive-local",
+                                 "-k 2 -R 2",
+                                 "| samtools sort -n -O BAM -@", threads, ">", local.first.bam)
+  cmds['aln.ref_vir.2'] <- paste(bt2.e, "-p", threads, 
+                                 "-x", ref_vir.genome.idx, 
+                                 "-U", potential.chimeric.reads.second.fastq,
+                                 "--very-sensitive-local",
+                                 "-k 2 -R 2",
+                                 "| samtools sort -n -O BAM -@", threads, ">", local.second.bam)
+  cmds['aln.ref_vir.3'] <- paste(bt2.e, "-p", threads, 
+                                 "-x", ref_vir.genome.idx, 
+                                 "-U", potential.chimeric.reads.both.fastq,
+                                 "--very-sensitive-local",
+                                 "-k 2 -R 2",
+                                 "| samtools sort -n -O BAM -@", threads, ">", local.both.bam)
   
   
   
