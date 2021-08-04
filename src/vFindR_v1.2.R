@@ -1,0 +1,238 @@
+# main function
+
+vFindR <- function(sample.dir = NULL,
+                   ref.genome.idx, vir.genome.idx, 
+                   ref_vir.genome.idx = NULL,
+                   path.to.picard.jar = NULL,
+                   R1 = NULL,
+                   R2 = NULL,
+                   output.name = NULL,
+                   bt2.e = NULL,
+                   samtools.e = NULL,
+                   bamtools.e = NULL,
+                   java.e = NULL,
+                   path.to.extract.py = NULL,
+                   python.e = NULL,
+                   ref.species = "homo_sapiens",
+                   threads = 8,
+                   output.dir = "vFindR_output",
+                   mode = "sh",
+                   vFindR.dir = NULL,
+                   slurm.header.args = c("-t 7-00:00:00", 
+                                         "-p dtg", 
+                                         "-A davidwcr_263", 
+                                         "-c 16", 
+                                         "--mem=55G",
+                                         "-J vFindR", 
+                                         "-o %x\\_%j.out")) {
+  # some idiot proofing
+  if ((!is.null(sample.dir) & !is.null(R1)) |
+      (!is.null(sample.dir) & !is.null(R2)) |
+      (is.null(sample.dir) & (is.null(R1) | is.null(R2)))) {
+    stop("Specify directory with reads (gzipped) OR R1 & R2")
+  }
+  # get paths and files
+  if (Sys.info()["user"] == "dbuckley") {
+    Sys.setenv(PATH=paste(Sys.getenv("PATH"), "/Users/dbuckley/Desktop/bin", sep=":"))
+  }
+  if (is.null(bt2.e)) {
+    bt2.e <- system("which bowtie2", intern = T)
+  } 
+  if (is.null(samtools.e)) {
+    samtools.e <- system("which samtools", intern = T)
+  }
+  if (is.null(bamtools.e)) {
+    bamtools.e <- system("which bamtools", intern = T)
+  }
+  if (is.null(java.e)) {
+    java.e <- system("which java", intern = T)
+  } 
+  if (is.null(path.to.picard.jar)) {
+    path.to.picard.jar <- system("which picard.jar", intern = T)
+  }
+  if (is.null(python.e)){
+    python.e <- system("which python3", intern = T)
+  }
+  if (is.null(path.to.extract.py)) {
+    path.to.extract.py <- "~/bin/extract_reads.py"
+  }
+  
+  if (is.null(R1) & is.null(R2)) {
+    R1 <- normalizePath(list.files(sample.dir, "R1.*fastq.gz", full.names = T))
+    R2 <- normalizePath(list.files(sample.dir, "R2.*fastq.gz", full.names = T))
+    output.dir <- paste0(normalizePath(sample.dir), "/", output.dir)
+  }
+  # some defaults
+  if(is.null(output.name)) {
+    output.name <- "vFindR"
+  }
+  output.stub <- paste0(output.dir, "/", output.name)
+  output.stub.perVirus <- paste0(output.dir, "/", "perVirus/", output.name)
+  
+  # set up all the files
+  aln.hg.1.bam <- paste0(output.stub, "_", ref.species, ".bam")
+  aln.hg.1.sam.header <- paste0(output.stub, "_samheader.txt")
+  # files for first/second/unaligned pairs
+  unmapped.first.bam <- paste0(output.stub, "_", ref.species, ".unmapped.first.bam")
+  unmapped.second.bam <- paste0(output.stub, "_", ref.species, ".unmapped.second.bam")
+  unmapped.both.bam <- paste0(output.stub, "_", ref.species, ".unmapped.both.bam")
+  # files for convert to fastq for realignment
+  unmapped.first.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.first_R1.fastq.gz")
+  unmapped.first.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.first_R2.fastq.gz")
+  unmapped.second.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.second_R1.fastq.gz")
+  unmapped.second.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.second_R2.fastq.gz")
+  unmapped.both.hg.r1.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.both_R1.fastq.gz")
+  unmapped.both.hg.r2.fastq <- paste0(output.stub, "_", ref.species, ".unmapped.both_R2.fastq.gz")
+  # files for align to viral genome
+  aln.vir.first.bam <- paste0(output.stub, "_unmapped-first-", ref.species, "_virus.bam")
+  aln.vir.second.bam <- paste0(output.stub, "_unmapped-second-", ref.species, "_virus.bam")
+  aln.vir.both.bam <- paste0(output.stub, "_unmapped-both-", ref.species, "_virus.bam")
+  # aln.vir.first.mapped.readnames <- paste0(output.stub, "_", ref.species, "_first-remapped-to-virus_readnames.txt")
+  # aln.vir.second.mapped.readnames <- paste0(output.stub, "_", ref.species, "_second-remapped-to-virus_readnames.txt")
+  # realn.mapped.first.bam <- paste0(output.stub, "_", ref.species, "_first-remapped-to-virus_", ref.species, ".bam")
+  # realn.mapped.second.bam <- paste0(output.stub, "_", ref.species, "_second-remapped-to-virus_", ref.species, ".bam")  
+  dual.mapped.readnames <- paste0(output.stub, "_", ref.species, "_dual-mapped_readnames.txt")
+  dual.mapped.bam <- paste0(output.stub, "_", ref.species, "_dual-mapped.bam")
+  aln.vir.first.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-first-", ref.species, "_virus")
+  aln.vir.second.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-second-", ref.species, "_virus")
+  
+  potential.chimeric.reads.bam <- paste0(output.stub, "_potential_chimeric.bam")
+  potential.chimeric.reads.r1.fastq <- paste0(output.stub, "_potential_chimeric_R1.fastq.gz")
+  potential.chimeric.reads.r2.fastq <- paste0(output.stub, "_potential_chimeric_R2.fastq.gz")
+  
+  
+  
+  
+  # wirite all the commands
+  cmds <- vector()
+  cmds['make.output.dir'] <- paste0("mkdir ", output.dir)
+  cmds['make.output.dir.perVirus'] <- paste0("mkdir ", output.dir, "/", "perVirus")
+  cmds['change.dir'] <- paste0("cd ", output.dir)
+  cmds['aln.hg.1'] <- paste(bt2.e, "-p", threads, 
+                            "-x", ref.genome.idx, 
+                            "-1", R1, 
+                            "-2", R2, " | samtools sort -O BAM -@", threads, ">", aln.hg.1.bam)
+  
+  cmds['get.unmapped.first'] <- paste0("{ ", 
+                                       paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
+                                       paste(samtools.e, "view -f 69 -G 9", aln.hg.1.bam), " && ",
+                                       paste(samtools.e, "view -f 137 -G 5", aln.hg.1.bam), 
+                                       "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.first.bam)
+  cmds['get.unmapped.second'] <- paste0("{ ", 
+                                        paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
+                                        paste(samtools.e, "view -f 133 -G 9", aln.hg.1.bam), " && ",
+                                        paste(samtools.e, "view -f 73 -G 5", aln.hg.1.bam), 
+                                        "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.second.bam)
+  cmds['get.unmapped.both'] <- paste0("{ ", 
+                                      paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
+                                      paste(samtools.e, "view -f 77", aln.hg.1.bam), " && ",
+                                      paste(samtools.e, "view -f 141", aln.hg.1.bam), 
+                                      "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.both.bam)
+  
+  # # convert bam to fastq and realign to viral genome
+  cmds['picard.samtofastq.unmapped.first.R1'] <-
+    paste0(java.e, " -jar ", path.to.picard.jar, " SamToFastq I=", unmapped.first.bam, 
+           " F=", unmapped.first.hg.r1.fastq, 
+           " F2=", unmapped.first.hg.r2.fastq)
+  cmds['picard.samtofastq.unmapped.second.R1'] <-
+    paste0(java.e, " -jar ", path.to.picard.jar, " SamToFastq I=", unmapped.second.bam, 
+           " F=", unmapped.second.hg.r1.fastq, 
+           " F2=", unmapped.second.hg.r2.fastq)
+  cmds['picard.samtofastq.unmapped.both.R1'] <-
+    paste0(java.e, " -jar ", path.to.picard.jar, " SamToFastq I=", unmapped.both.bam, 
+           " F=", unmapped.both.hg.r1.fastq, 
+           " F2=", unmapped.both.hg.r2.fastq)
+  # align to viral genome
+  cmds['aln.vir.first'] <- paste(bt2.e, "--very-sensitive",
+                                 "-p", threads, 
+                                 "-x", vir.genome.idx, 
+                                 "-1", unmapped.first.hg.r1.fastq, 
+                                 "-2", unmapped.first.hg.r2.fastq, 
+                                 " | samtools sort -O BAM -@", threads, ">", aln.vir.first.bam)
+  cmds['aln.vir.second'] <- paste(bt2.e, "--very-sensitive",
+                                  "-p", threads, 
+                                  "-x", vir.genome.idx, 
+                                  "-1", unmapped.second.hg.r1.fastq, 
+                                  "-2", unmapped.second.hg.r2.fastq, 
+                                  " | samtools sort -O BAM -@", threads, ">", aln.vir.second.bam)
+  cmds['aln.vir.both'] <- paste(bt2.e, "--very-sensitive",
+                                "-p", threads, 
+                                "-x", vir.genome.idx, 
+                                "-1", unmapped.both.hg.r1.fastq, 
+                                "-2", unmapped.both.hg.r2.fastq, 
+                                " | samtools sort -O BAM -@", threads, ">", aln.vir.both.bam)
+  
+  # # extract reads that mapped discordantly in human and did map to virus
+  cmds['index.first.bam'] <- paste(samtools.e, "index", aln.hg.1.bam)
+  cmds['get.dual.mapped.readnames'] <- paste0("{ ", 
+                                              paste(samtools.e, "view -F 4", aln.vir.first.bam), " && ",
+                                              paste(samtools.e, "view -F 4", aln.vir.second.bam),
+                                              "; } | cut -f 1 > ", dual.mapped.readnames)
+  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
+                                             "-o /dev/stdout |", samtools.e,"sort -O BAM -@", threads, ">", dual.mapped.bam)
+  # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
+  #                                            "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
+  cmds['split.perVirus.first'] <- paste(bamtools.e, "split -reference -stub", aln.vir.first.perVirus.stub, "-in", aln.vir.first.bam)
+  cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
+  cmds['remove.unmapped.bams'] <- paste0("rm -vf ", output.dir, "/perVirus/*_unmapped.bam")
+  cmds['dual.bam.to.bed'] <- paste(bamtools.e, "convert -format bed -in", dual.mapped.bam, "-out", gsub("bam$", "bed", dual.mapped.bam))
+  cmds['viral.bams.to.bed'] <- paste0("bash ", vFindR.dir, "/src/", "convert_all_virus_bams.sh ", 
+                                      paste0(output.dir, "/", "perVirus/"), " ", bamtools.e)
+  
+  # take everything that remains unmapped; potential chimeric reads
+  cmds['get.unmapped.reads'] <- paste0("{ ",
+                                       paste("samtools view -h -f 4", aln.vir.first.bam), " && ",
+                                       paste("samtools view -f 4", aln.vir.second.bam), " && ",
+                                       paste("samtools view -f 4", aln.vir.first.bam), 
+                                       "; } | ", samtools.e, " view -b -@ ", threads, " > ", potential.chimeric.reads.bam)
+  cmds['picard.samtofastq.potential.chimeric'] <-
+    paste0(java.e, " -jar ", path.to.picard.jar, " SamToFastq I=", potential.chimeric.reads.bam, 
+           " F=", potential.chimeric.reads.r1.fastq, 
+           " F2=", potential.chimeric.reads.r2.fastq)
+  
+  
+  
+  
+  # index everything
+  # cmds['index'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " index $i; done")
+  # cmds['idxstats'] <- paste0("for i in ", output.dir, "/*bam; do ", samtools.e, " idxstats $i > $i.idxstats; done")
+  cmds <- .addEcho(cmds)
+  if (mode == "local") {
+      lapply(cmds, system, ignore.stdout = F, ignore.stderr = F)
+  } else if (mode == "sh") {
+    write.table(cmds, paste0(output.name, "_commands.sh"),
+                row.names = F, col.names = F, quote = F)
+  } else if (mode == "slurm") {
+    slurm.header.args <- paste0("#SBATCH ", slurm.header.args)
+    cmds <- c("#!/bin/bash", slurm.header.args, "\n\n\n", cmds)
+    write.table(cmds, paste0(output.name, "_commands.slurm"),
+                row.names = F, col.names = F, quote = F)
+  } else {
+    stop("Mode must be one of: 'local', 'sh', or 'slurm'")
+  }
+  return("Done.")
+}
+
+.addEcho <- function(cmds) {
+  c <- vector()
+  n <- 1
+  for (i in 1:length(cmds)) {
+    c[n] <- "printf \"\\n######## COMMAND: ########\\n\""
+    c[n+1] <- paste0("echo ", "\"", cmds[i], "\"")
+    c[n+2] <- "printf \"##########################\\n\""
+    c[n+3] <- cmds[i]
+    n <- n+4
+  }
+  c <- c(c, "echo Done.")
+  return(c)
+}
+
+
+
+
+
+
+
+
+
+
