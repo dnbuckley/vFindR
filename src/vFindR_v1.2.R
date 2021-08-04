@@ -117,23 +117,23 @@ vFindR <- function(sample.dir = NULL,
   cmds['aln.hg.1'] <- paste(bt2.e, "-p", threads, 
                             "-x", ref.genome.idx, 
                             "-1", R1, 
-                            "-2", R2, " | samtools sort -O BAM -@", threads, ">", aln.hg.1.bam)
+                            "-2", R2, " | samtools sort -O BAM >", aln.hg.1.bam)
   
   cmds['get.unmapped.first'] <- paste0("{ ", 
                                        paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
                                        paste(samtools.e, "view -f 69 -G 9", aln.hg.1.bam), " && ",
                                        paste(samtools.e, "view -f 137 -G 5", aln.hg.1.bam), 
-                                       "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.first.bam)
+                                       "; } | samtools sort -O BAM > ", unmapped.first.bam)
   cmds['get.unmapped.second'] <- paste0("{ ", 
                                         paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
                                         paste(samtools.e, "view -f 133 -G 9", aln.hg.1.bam), " && ",
                                         paste(samtools.e, "view -f 73 -G 5", aln.hg.1.bam), 
-                                        "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.second.bam)
+                                        "; } | samtools sort -O BAM > ", unmapped.second.bam)
   cmds['get.unmapped.both'] <- paste0("{ ", 
                                       paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
                                       paste(samtools.e, "view -f 77", aln.hg.1.bam), " && ",
                                       paste(samtools.e, "view -f 141", aln.hg.1.bam), 
-                                      "; } | samtools sort -O BAM -@ ", threads, " > ", unmapped.both.bam)
+                                      "; } | samtools sort -O BAM > ", unmapped.both.bam)
   
   # # convert bam to fastq and realign to viral genome
   cmds['picard.samtofastq.unmapped.first.R1'] <-
@@ -154,19 +154,19 @@ vFindR <- function(sample.dir = NULL,
                                  "-x", vir.genome.idx, 
                                  "-1", unmapped.first.hg.r1.fastq, 
                                  "-2", unmapped.first.hg.r2.fastq, 
-                                 " | samtools sort -O BAM -@", threads, ">", aln.vir.first.bam)
+                                 " | samtools sort -O BAM >", aln.vir.first.bam)
   cmds['aln.vir.second'] <- paste(bt2.e, "--very-sensitive",
                                   "-p", threads, 
                                   "-x", vir.genome.idx, 
                                   "-1", unmapped.second.hg.r1.fastq, 
                                   "-2", unmapped.second.hg.r2.fastq, 
-                                  " | samtools sort -O BAM -@", threads, ">", aln.vir.second.bam)
+                                  " | samtools sort -O BAM >", aln.vir.second.bam)
   cmds['aln.vir.both'] <- paste(bt2.e, "--very-sensitive",
                                 "-p", threads, 
                                 "-x", vir.genome.idx, 
                                 "-1", unmapped.both.hg.r1.fastq, 
                                 "-2", unmapped.both.hg.r2.fastq, 
-                                " | samtools sort -O BAM -@", threads, ">", aln.vir.both.bam)
+                                " | samtools sort -O BAM >", aln.vir.both.bam)
   
   # # extract reads that mapped discordantly in human and did map to virus
   cmds['index.first.bam'] <- paste(samtools.e, "index", aln.hg.1.bam)
@@ -212,19 +212,19 @@ vFindR <- function(sample.dir = NULL,
                                  "-U", potential.chimeric.reads.first.fastq,
                                  "--very-sensitive-local",
                                  "-k 2 -R 2",
-                                 "| samtools sort -n -O BAM -@", threads, ">", local.first.bam)
+                                 "| samtools sort -n -O BAM >", local.first.bam)
   cmds['aln.ref_vir.2'] <- paste(bt2.e, "-p", threads, 
                                  "-x", ref_vir.genome.idx, 
                                  "-U", potential.chimeric.reads.second.fastq,
                                  "--very-sensitive-local",
                                  "-k 2 -R 2",
-                                 "| samtools sort -n -O BAM -@", threads, ">", local.second.bam)
+                                 "| samtools sort -n -O BAM >",  local.second.bam)
   cmds['aln.ref_vir.3'] <- paste(bt2.e, "-p", threads, 
                                  "-x", ref_vir.genome.idx, 
                                  "-U", potential.chimeric.reads.both.fastq,
                                  "--very-sensitive-local",
                                  "-k 2 -R 2",
-                                 "| samtools sort -n -O BAM -@", threads, ">", local.both.bam)
+                                 "| samtools sort -n -O BAM >",  local.both.bam)
   
   
   
