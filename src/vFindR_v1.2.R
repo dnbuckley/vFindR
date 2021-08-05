@@ -187,15 +187,16 @@ vFindR <- function(sample.dir = NULL,
   
   # take everything that remains unmapped; potential chimeric reads
   # get unmapped R1 reads | remove bowtie information | awk trick picard | sam2fastq
+  # the nasty awk command is because picard is so fucking pedantic
   cmds['picard.samtofastq.potential.chimeric.first'] <-
     paste0("samtools view -f 68 ", aln.vir.first.bam, " | cut -f 1-11 | ",
-           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; print}' | ",
+           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; $3=$7=\"*\"; $4=$5=$8=0; print}' | ",
            java.e, " -jar ", path.to.picard.jar, " SamToFastq I=/dev/stdin", 
            " F=", potential.chimeric.reads.first.fastq,
            " INCLUDE_NON_PF_READS=true")
   cmds['picard.samtofastq.potential.chimeric.second'] <-
     paste0("samtools view -f 133 ", aln.vir.second.bam, " | cut -f 1-11 | ",
-           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; print}' | ",
+           "awk -F'\\t' 'BEGIN {OFS = FS} {$2=4; $3=$7=\"*\"; $4=$5=$8=0; print}' | ",
            java.e, " -jar ", path.to.picard.jar, " SamToFastq I=/dev/stdin", 
            " F=", potential.chimeric.reads.second.fastq,
            " INCLUDE_NON_PF_READS=true")
