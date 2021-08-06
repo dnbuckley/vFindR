@@ -67,6 +67,7 @@ vFindR <- function(sample.dir = NULL,
   }
   output.stub <- paste0(output.dir, "/", output.name)
   output.stub.perVirus <- paste0(output.dir, "/", "perVirus/", output.name)
+  filterChimericBam <- paste0(vFindR.dir, "/src/filterChimericBam")
   
   # set up all the files
   aln.hg.1.bam <- paste0(output.stub, "_", ref.species, ".bam")
@@ -212,20 +213,29 @@ vFindR <- function(sample.dir = NULL,
                                  "-x", ref_vir.genome.idx, 
                                  "-U", potential.chimeric.reads.first.fastq,
                                  "--very-sensitive-local",
-                                 "-k 2 -R 2",
-                                 "| samtools sort -n -O BAM >", local.first.bam)
+                                 "-k 2 -R 2", "|", 
+                                 samtools.e, "view -F 4 -O SAM -h",
+                                 samtools.e, "sort -n -O SAM |", 
+                                 filterChimericBam,"|", samtools.e, "sort -O BAM >", 
+                                 local.first.bam)
   cmds['aln.ref_vir.2'] <- paste(bt2.e, "-p", threads, 
                                  "-x", ref_vir.genome.idx, 
                                  "-U", potential.chimeric.reads.second.fastq,
                                  "--very-sensitive-local",
-                                 "-k 2 -R 2",
-                                 "| samtools sort -n -O BAM >",  local.second.bam)
+                                 "-k 2 -R 2", "|", 
+                                 samtools.e, "view -F 4 -O SAM -h",
+                                 samtools.e, "sort -n -O SAM |", 
+                                 filterChimericBam,"|", samtools.e, "sort -O BAM >",
+                                 local.second.bam)
   cmds['aln.ref_vir.3'] <- paste(bt2.e, "-p", threads, 
                                  "-x", ref_vir.genome.idx, 
                                  "-U", potential.chimeric.reads.both.fastq,
                                  "--very-sensitive-local",
-                                 "-k 2 -R 2",
-                                 "| samtools sort -n -O BAM >",  local.both.bam)
+                                 "-k 2 -R 2", "|", 
+                                 samtools.e, "view -F 4 -O SAM -h",
+                                 samtools.e, "sort -n -O SAM |", 
+                                 filterChimericBam,"|", samtools.e, "sort -O BAM >",
+                                 local.both.bam)
   
   
   
