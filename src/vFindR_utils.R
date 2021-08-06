@@ -37,7 +37,15 @@ require(openxlsx)
     dplyr::left_join(ref, by = "seqnames")
   return(x$species)
 } 
-
+.species2vChr <- function(species, ref = NULL) {
+  if (is.null(ref)) {
+    ref <- read.xlsx("~/Desktop/salhia_lab/vFindR/viral_seqnames.xlsx")
+  }
+  x <- data.frame(species = species)
+  x <- x %>% 
+    dplyr::left_join(ref, by = "species")
+  return(x$seqnames)
+}
 
 
 

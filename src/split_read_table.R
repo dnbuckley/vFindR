@@ -6,10 +6,14 @@ source("src/vFindR_utils.R")
 
 .splitReadTable <- function(output.dir,
                             ref.species = "homo_sapiens",
-                            virus.table = NULL) {
-  virus.table <- openxlsx::read.xlsx("viral_seqnames.xlsx")
+                            virus.table = NULL,
+                            viruses = NULL) {
+  virus.table <- openxlsx::read.xlsx("~/Desktop/salhia_lab/vFindR/viral_seqnames.xlsx")
   ref.file <- list.files(output.dir, paste0(ref.species, "_dual-mapped.bam$"), full.names = T)
   virus.files <- list.files(paste0(output.dir, "/perVirus/"), "bam$", full.names = T)
+  if (!is.null(viruses)) {
+    virus.files <- virus.files[gsub("(.*REF_|\\.bam$)", "", virus.files) %in% viruses]
+  }
   ref.df <- .readBAM(ref.file)
   ref.df <- ref.df[!is.na(ref.df$pos), ]
   virus.df <- do.call(rbind.data.frame, mclapply(virus.files, function(f) {
