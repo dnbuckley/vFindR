@@ -17,6 +17,7 @@ vFindR <- function(sample.dir = NULL,
                    output.dir = "vFindR_output",
                    mode = "sh",
                    vFindR.dir = NULL,
+                   cleanup = T,
                    slurm.header.args = c("-t 7-00:00:00", 
                                          "-p dtg", 
                                          "-A davidwcr_263", 
@@ -182,9 +183,9 @@ vFindR <- function(sample.dir = NULL,
   cmds['split.perVirus.first'] <- paste(bamtools.e, "split -reference -stub", aln.vir.first.perVirus.stub, "-in", aln.vir.first.bam)
   cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
   cmds['remove.unmapped.bams'] <- paste0("rm -vf ", output.dir, "/perVirus/*_unmapped.bam")
-  cmds['dual.bam.to.bed'] <- paste(bamtools.e, "convert -format bed -in", dual.mapped.bam, "-out", gsub("bam$", "bed", dual.mapped.bam))
-  cmds['viral.bams.to.bed'] <- paste0("bash ", vFindR.dir, "/src/", "convert_all_virus_bams.sh ", 
-                                      paste0(output.dir, "/", "perVirus/"), " ", bamtools.e)
+  # cmds['dual.bam.to.bed'] <- paste(bamtools.e, "convert -format bed -in", dual.mapped.bam, "-out", gsub("bam$", "bed", dual.mapped.bam))
+  # cmds['viral.bams.to.bed'] <- paste0("bash ", vFindR.dir, "/src/", "convert_all_virus_bams.sh ", 
+  #                                     paste0(output.dir, "/", "perVirus/"), " ", bamtools.e)
   
   # take everything that remains unmapped; potential chimeric reads
   # get unmapped R1 reads | remove bowtie information | awk trick picard | sam2fastq
@@ -236,7 +237,13 @@ vFindR <- function(sample.dir = NULL,
                                  samtools.e, "sort -n -O SAM |", 
                                  filterChimericBam,"|", samtools.e, "sort -O BAM >",
                                  local.both.bam)
-  
+  if (cleanup) {
+    cmds['mktemp'] <- "mkdir temp"
+    cmds['mvtemp'] <- "mv -v *localalign.bam *dual-mapped.bam temp/"
+    cmds['remove_bullshit'] <- "rm -v *bam* *fastq*"
+    cmds['mvback'] <- "mv -v temp/* ."
+    cmds['rmtemp'] <- "rmdir temp/"
+  }
   
   
   # index everything
