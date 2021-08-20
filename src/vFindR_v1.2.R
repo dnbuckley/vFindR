@@ -120,7 +120,7 @@ vFindR <- function(sample.dir = NULL,
   cmds['aln.hg.1'] <- paste(bt2.e, "-p", threads, 
                             "-x", ref.genome.idx, 
                             "-1", R1, 
-                            "-2", R2, " | samtools sort -O BAM >", aln.hg.1.bam)
+                            "-2", R2, " | samtools sort -n -O BAM >", aln.hg.1.bam)
   
   cmds['get.unmapped.first'] <- paste0("{ ", 
                                        paste(samtools.e, "view -H ", aln.hg.1.bam), " && ",
