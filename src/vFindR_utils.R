@@ -21,7 +21,6 @@ require(openxlsx)
   list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
   bam_df <- do.call("DataFrame", list)
   names(bam_df) <- bam_field
-  #return a list that can be called as a data frame
   return(as.data.frame(bam_df))
 }
 .bamDF2GR <- function(df) {

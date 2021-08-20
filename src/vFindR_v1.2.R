@@ -25,6 +25,7 @@ vFindR <- function(sample.dir = NULL,
                                          "--mem=55G",
                                          "-J vFindR", 
                                          "-o %x\\_%j.out")) {
+  # some checks
   if ((!is.null(sample.dir) & !is.null(R1)) |
       (!is.null(sample.dir) & !is.null(R2)) |
       (is.null(sample.dir) & (is.null(R1) | is.null(R2)))) {
@@ -92,6 +93,7 @@ vFindR <- function(sample.dir = NULL,
   # realn.mapped.first.bam <- paste0(output.stub, "_", ref.species, "_first-remapped-to-virus_", ref.species, ".bam")
   # realn.mapped.second.bam <- paste0(output.stub, "_", ref.species, "_second-remapped-to-virus_", ref.species, ".bam")  
   dual.mapped.readnames <- paste0(output.stub, "_", ref.species, "_dual-mapped_readnames.txt")
+  dual.mapped.temp <- paste0(output.stub, "_", ref.species, "_dual-mapped_temp")
   dual.mapped.bam <- paste0(output.stub, "_", ref.species, "_dual-mapped.bam")
   aln.vir.first.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-first-", ref.species, "_virus")
   aln.vir.second.perVirus.stub <- paste0(output.stub.perVirus, "_unmapped-second-", ref.species, "_virus")
@@ -174,11 +176,15 @@ vFindR <- function(sample.dir = NULL,
   cmds['get.dual.mapped.readnames'] <- paste0("{ ", 
                                               paste(samtools.e, "view -F 4", aln.vir.first.bam), " && ",
                                               paste(samtools.e, "view -F 4", aln.vir.second.bam),
-                                              "; } | cut -f 1 > ", dual.mapped.readnames)
-  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
-                                             "-o /dev/stdout |", samtools.e,"sort -O BAM -@", threads, ">", dual.mapped.bam)
+                                              "; } | cut -f 1 | sort > ", dual.mapped.readnames)
+  # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames,
+  #                                            "-o /dev/stdout |", samtools.e,"sort -O BAM -@", threads, ">", dual.mapped.bam)
   # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
   #                                            "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
+  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames,
+                                             "-o", dual.mapped.temp)
+  cmds['convert.dual.mapped.to.bam'] <- paste(samtools.e,"sort -O BAM -@", threads, dual.mapped.temp, ">", dual.mapped.bam)
+  cmds['remove.dual.mapped.temp'] <- paste("rm -v", dual.mapped.temp)
   cmds['split.perVirus.first'] <- paste(bamtools.e, "split -reference -stub", aln.vir.first.perVirus.stub, "-in", aln.vir.first.bam)
   cmds['split.perVirus.second'] <- paste(bamtools.e, "split -reference -stub", aln.vir.second.perVirus.stub, "-in", aln.vir.second.bam)
   cmds['remove.unmapped.bams'] <- paste0("rm -vf ", output.dir, "/perVirus/*_unmapped.bam")
