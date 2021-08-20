@@ -25,7 +25,6 @@ vFindR <- function(sample.dir = NULL,
                                          "--mem=55G",
                                          "-J vFindR", 
                                          "-o %x\\_%j.out")) {
-  # some idiot proofing
   if ((!is.null(sample.dir) & !is.null(R1)) |
       (!is.null(sample.dir) & !is.null(R2)) |
       (is.null(sample.dir) & (is.null(R1) | is.null(R2)))) {
