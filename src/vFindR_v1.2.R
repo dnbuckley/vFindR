@@ -176,7 +176,7 @@ vFindR <- function(sample.dir = NULL,
   cmds['get.dual.mapped.readnames'] <- paste0("{ ", 
                                               paste(samtools.e, "view -F 4", aln.vir.first.bam), " && ",
                                               paste(samtools.e, "view -F 4", aln.vir.second.bam),
-                                              "; } | cut -f 1 | sort > ", dual.mapped.readnames)
+                                              "; } | cut -f 1 | ", vFindR.dir, "sortLikeSamtools > ", dual.mapped.readnames)
   # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames,
   #                                            "-o /dev/stdout |", samtools.e,"sort -O BAM -@", threads, ">", dual.mapped.bam)
   # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 

@@ -52,7 +52,7 @@ for (dir in dirs) {
 }
 
 
-dirs <- list.dirs(".", recursive = F)
+dirs <- list.dirs("rundir/", recursive = F, full.names = T)
 dirs <- gsub("^\\.\\/", "", dirs)
 for (dir in dirs) {
   vFindR(sample.dir = dir,
