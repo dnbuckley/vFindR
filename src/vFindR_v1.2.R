@@ -181,8 +181,10 @@ vFindR <- function(sample.dir = NULL,
   #                                            "-o /dev/stdout |", samtools.e,"sort -O BAM -@", threads, ">", dual.mapped.bam)
   # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames, 
   #                                            "-o /dev/stdout | samtools sort -O BAM -@", threads, ">", dual.mapped.bam)
-  cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames,
-                                             "-o", dual.mapped.temp)
+  # cmds['extract.dual.mapped.reads'] <- paste(python.e, path.to.extract.py, "-b", aln.hg.1.bam, "-n", dual.mapped.readnames,
+  #                                            "-o", dual.mapped.temp)
+  cmds['extract.dual.mapped.reads'] <- paste("samtools view", aln.hg.1.bam, "|", vFindR.dir, "/src/getCommonReads", dual.mapped.readnames,
+                                             ">", dual.mapped.temp)
   cmds['convert.dual.mapped.to.bam'] <- paste(samtools.e,"sort -O BAM -@", threads, dual.mapped.temp, ">", dual.mapped.bam)
   cmds['remove.dual.mapped.temp'] <- paste("rm -v", dual.mapped.temp)
   cmds['split.perVirus.first'] <- paste(bamtools.e, "split -reference -stub", aln.vir.first.perVirus.stub, "-in", aln.vir.first.bam)
